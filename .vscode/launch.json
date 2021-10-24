@@ -10,7 +10,31 @@
             "request": "launch",
             "program": "${workspaceFolder}/test_dynamics.py",
             "args": [
-
+                "--model", "duffing",
+                "--mode", "test"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Train lorentz",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_dynamics.py",
+            "args": [
+                "--model", "lorentz_attractor",
+                "--mode", "train"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Test regulator",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_regulator.py",
+            "args": [
+                "--model", "duffing"
             ],
             "console": "integratedTerminal",
             "justMyCode": false
