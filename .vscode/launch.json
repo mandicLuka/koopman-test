@@ -10,8 +10,10 @@
             "request": "launch",
             "program": "${workspaceFolder}/test_dynamics.py",
             "args": [
-                "--model", "duffing",
-                "--mode", "test"
+                "--model",
+                "duffing",
+                "--mode",
+                "test"
             ],
             "console": "integratedTerminal",
             "justMyCode": false
@@ -22,8 +24,12 @@
             "request": "launch",
             "program": "${workspaceFolder}/test_dynamics.py",
             "args": [
-                "--model", "lorentz_attractor",
-                "--mode", "train"
+                "--model",
+                "lorentz_attractor",
+                "--nn",
+                "mishmash",
+                "--mode",
+                "train"
             ],
             "console": "integratedTerminal",
             "justMyCode": false
@@ -34,8 +40,17 @@
             "request": "launch",
             "program": "${workspaceFolder}/test_regulator.py",
             "args": [
-                "--model", "duffing"
+                "--model",
+                "duffing"
             ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
         }

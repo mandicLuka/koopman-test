@@ -1,0 +1,26 @@
+datasets: 
+  duffing:
+    system: duffing
+    system_params:
+      a: 1
+    episodes:
+      - dt_step: 0.01
+        start_time: 0
+        end_time: 8
+        x_0: 
+          type: uniform_box
+          num_trajectories: 100
+          x_min: [-0.5, -0.5]
+          x_max: [0.5, 0.5]
+      
+  lorentz:
+    system: lorentz_attractor
+    episodes:
+      - dt_step: 0.01
+        start_time: 0
+        end_time: 8
+        x_0: 
+          type: uniform_box
+          num_trajectories: 700
+          x_min: [-1, -1, -1]
+          x_max: [1, 1, 1]

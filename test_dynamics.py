@@ -33,8 +33,8 @@ def evolve(model, x0, time, dt):
 
 def plot_result(dynamic_model, model, ran, dt):
 
+    dim = dynamic_model.dim
     time = 8
-    dim = 2
     # dim = model.out_dim
     x0 = ran[0] + (ran[1] - ran[0]) * np.random.random((1, dim))
     x = evolve(dynamic_model, x0, time, dt)
@@ -73,6 +73,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", default="train")
+    parser.add_argument("--nn", default="fc")
     parser.add_argument("--model", default="lorentz_attractor")
     parser.add_argument("--model_name", default="")
     args = parser.parse_args()
@@ -84,8 +85,7 @@ def main():
     from dynamic_models import state_space
     lam = lambda x : x is state_space
     dynamic_model_registry = getmembers(dynamic_models, lam)[0][1]
-    dynamic_model_type = next(x for x in dynamic_model_registry.models if x.name == model)
-    dim, dynamic_model = dynamic_model_type.dim, dynamic_model_type.func
+    dynamic_model = next(x for x in dynamic_model_registry.models if x.name == model)
 
     # x = x[:100]
     def loss1(y, y_pred):
@@ -103,9 +103,10 @@ def main():
         # long trajs
         time = 12
         num_trajs = 700
-        epochs = 10
+        epochs = 1#10
         validation_split = 0.2
 
+        dim = dynamic_model.dim
         x0 = ran[0] + (ran[1] - ran[0]) * np.random.random((num_trajs, dim))
 
         long_x = evolve(dynamic_model, x0, time, dt)
@@ -126,10 +127,14 @@ def main():
         x_p = x_p[shuffle_indices]
 
         # model = CoordinateTransformNetwork(dim)
-        from dmd_network import MishmashNetwork
-        model = MishmashNetwork(dim)
-        model.compile(optimizer='adam', loss=[loss1])
-        model.fit([x, x], x_p, epochs=epochs, validation_split=validation_split)
+        if args.nn == "mishmash":
+            from dmd_network import MishmashNetwork
+            model = MishmashNetwork(dim)
+        if args.nn == "fc":
+            model = CoordinateTransformNetwork(dim)
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="logs", histogram_freq=1, profile_batch='150, 200')
+
+        model.fit(x, x_p, epochs=epochs, validation_split=validation_split, callbacks=[tensorboard_callback])
         model.save(args.model_name)
         ## test
 

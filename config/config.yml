@@ -1,0 +1,23 @@
+input_window_width: 6
+input_window_skip: 0
+input_window_label_width: 4
+batch_size: 10
+epochs: 3
+models:
+  dense_small:
+    type: ctn
+    loss: ss
+    layers: [32, 32, 32]
+    loss_params:
+      gamma: 1
+  dense_med:
+    type: ctn
+    layers: [64, 64, 32]
+  mishmash_small:
+    type: mishmash
+    layers: [64, 64, 32]
+
+dataset_folder: "~/koopman_test/datasets"
+datasets: 
+  - duffing
+  - lorentz
