@@ -69,6 +69,7 @@ class CoordinateTransformNetwork(keras.Model):
 
             # y_pred = (inverse, koopman)
             # y = (x_p, next_embed)
+            encoded = self.inverse(self.embed(data))
             if num_labels == 1:
                 predictions = tf.expand_dims(self.call(data)[:, -1], axis=1)
             else:
@@ -80,27 +81,33 @@ class CoordinateTransformNetwork(keras.Model):
                     preds.append(pred[:, -1])
 
                 predictions = tf.stack(preds, axis=1)
+
             # Compute the loss value
             # (the loss function is configured in `compile()`)
-            loss = self.compiled_loss(labels, predictions, regularization_losses=self.losses)
+            loss_koopman = self.compiled_loss(labels, predictions, regularization_losses=self.losses)
+            loss_autoencoder = self.compiled_loss(data, encoded, regularization_losses=self.losses)
+            total_loss = 100*loss_koopman + 70*loss_autoencoder
 
         # Compute gradients
         trainable_vars = self.trainable_variables
-        gradients = tape.gradient(loss, trainable_vars)
+        gradients = tape.gradient(total_loss, trainable_vars)
         # Update weights
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         # Update metrics (includes the metric that tracks the loss)
         self.compiled_metrics.update_state(labels, predictions)
         # Return a dict mapping metric names to current value
-        return {m.name: m.result() for m in self.metrics}
+        return {'loss': total_loss}
 
 
 class MishmashNetwork(keras.Model):
 
 
-    def __init__(self, dim, **kwargs):
+    def __init__(self, input_shape, **kwargs):
         super(MishmashNetwork, self).__init__()
-        self.out_dim = dim
+        self.input_window = input_shape[0]
+        self.feature_shape = input_shape[1:]
+        self.num_features = np.prod(self.feature_shape)
+
         self.m1 = MishmashLayer(32)
         self.m2 = MishmashLayer(32)
         self.m3 = MishmashLayer(32)
@@ -118,14 +125,16 @@ class MishmashNetwork(keras.Model):
 
     @tf.function
     def embed(self, x):
-        e = self.m3(self.m2(self.m1([x, x])))
+        inp = tf.reshape(x, (-1, self.num_features))
+        e = self.m3(self.m2(self.m1([inp, inp])))
         return tf.concat(e, axis=1)
 
     @tf.function
     def inverse(self, embed):
         embed = tf.split(embed, 2, axis=1)
         r = self.m1.inverse(self.m2.inverse(self.m3.inverse(embed)))
-        return (r[0] + r[1]) / 2
+        mean = (r[0] + r[1]) / 2
+        return tf.reshape(mean, (-1, self.input_window, *self.feature_shape))
         
     def call(self, x):
         e = self.embed(x)
@@ -133,45 +142,48 @@ class MishmashNetwork(keras.Model):
         return self.inverse(koopman)
 
     def train_step(self, data):
-        # Unpack the data. Its structure depends on your model and
-        # on what you pass to `fit()`.
-        self.step += 1
-        with tf.profiler.experimental.Trace('train', step_num=self.step, _r=1):
 
-            x = data[0]
-            x_p = data[1]
+        data, labels = data
 
+        predictions = tf.Variable(tf.zeros_like(labels))
+        data_var = tf.Variable(data)
 
-            with tf.GradientTape() as tape:
+        num_labels = tf.shape(labels)[1]
+        with tf.GradientTape() as tape:
 
-                # embed = self.embed(x)  # Forward pass
-                # next_embed = tf.stop_gradient(self.embed(x_p))
+            # embed = self.embed(x)  # Forward pass
+            # next_embed = tf.stop_gradient(self.embed(x_p))
 
-                # koopman = self.U(embed)
-                # inverse = self.inverse(koopman)
+            # koopman = self.U(embed)
+            # inverse = self.inverse(koopman)
 
-                # y_pred = (inverse, koopman)
-                # y = (x_p, next_embed)
+            # y_pred = (inverse, koopman)
+            # y = (x_p, next_embed)
+            encoded = self.inverse(self.embed(data))
+            if num_labels == 1:
+                predictions = tf.expand_dims(self.call(data)[:, -1], axis=1)
+            else:
+                preds = []
+                for i in range(num_labels):
+                    pred = self.call(data)
+                    data_var[:, 0:-1].assign(data[:, 1:]) 
+                    data_var[:, -1, :].assign(pred[:, -1], 1)
+                    preds.append(pred[:, -1])
 
-                # y_pred = self.call(x)
-                # y = x_p
+                predictions = tf.stack(preds, axis=1)
 
-                x_embed = self.embed(x)
-                x_p_embed = self.embed(x_p)
-                y = x_p_embed
-                y_pred = self.U(x_embed)
+            # Compute the loss value
+            # (the loss function is configured in `compile()`)
+            loss_koopman = self.compiled_loss(labels, predictions, regularization_losses=self.losses)
+            loss_autoencoder = self.compiled_loss(data, encoded, regularization_losses=self.losses)
+            total_loss = 1000*loss_koopman + 100*loss_autoencoder
 
-                # Compute the loss value
-                # (the loss function is configured in `compile()`)
-                loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
-                a = 5
-
-            # Compute gradients
-            trainable_vars = self.trainable_variables
-            gradients = tape.gradient(loss, trainable_vars)
-            # Update weights
-            self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-            # Update metrics (includes the metric that tracks the loss)
-            self.compiled_metrics.update_state(y, y_pred)
-            # Return a dict mapping metric names to current value
-            return {m.name: m.result() for m in self.metrics}
+        # Compute gradients
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(total_loss, trainable_vars)
+        # Update weights
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+        # Update metrics (includes the metric that tracks the loss)
+        self.compiled_metrics.update_state(labels, predictions)
+        # Return a dict mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}

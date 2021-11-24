@@ -1,7 +1,7 @@
 batch_size: 10
 epochs: 3
 save_path: saved_models
-validation_split: 0 # 0-1
+validation_split: 0.2 # 0-1
 models:
   dense_small:
     type: ctn

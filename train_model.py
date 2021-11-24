@@ -1,7 +1,6 @@
 from dmd_network import MishmashNetwork, CoordinateTransformNetwork
 from data_window_generator import WindowGenerator
 from losses import SequenceSquareLoss
-import os, yaml, pickle
 import tensorflow as tf
 import numpy as np
 import itertools
@@ -16,10 +15,6 @@ _LOSS_REGISTRY = {
     "ss" : SequenceSquareLoss,
     "loss2": CoordinateTransformNetwork
 }
-
-
-def get_dataset(name):
-    pass
 
 def create_model(
     model_architecture,
@@ -39,22 +34,6 @@ def create_model(
 
     model.compile(optimizer=optimizer, loss=loss, run_eagerly=run_eagerly)
     return model
-
-
-def load_and_check_config() -> dict:
-    with open(os.path.join("config", "config.yml"), "r") as stream:
-        #try:
-            cfg = yaml.safe_load(stream)
-        #except yaml.YAMLError as exc:
-        #    print(exc)
-
-    return cfg
-
-def load_dataset(dataset_name):
-    with open(os.path.join("datasets", f"{dataset_name}.pkl"), "rb") as stream:
-        dataset = pickle.load(stream)
-
-    return list(map(lambda x: x.data, dataset))
 
 
 def train_models_on_dataset(dataset, train_params:dict):
@@ -109,15 +88,38 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
         model.fit(data, epochs=train_params["epochs"], 
             callbacks=[tensorboard_callback])
 
-    model.fit(data, epochs=train_params["epochs"], validation_split=train_params.get("validation_split", 0))
+    validation_split = train_params.get("validation_split", 0)
+    cardinality = data.cardinality().numpy()
+    val_size = int(validation_split * cardinality)
+    train_size = int((1 - validation_split) * cardinality)
+    
+    train_ds = data.take(train_size)    
+    val_ds = data.skip(train_size).take(val_size)
+
+    history = model.fit(train_ds, epochs=train_params["epochs"], validation_data=val_ds)
     return model, history
 
 
 def main():
-    cfg = load_and_check_config()
-    for ds in cfg["datasets"]:
-        dataset = load_dataset(ds)
-        train_model_on_dataset("ctn", dataset, cfg)
+    ds = "duffing"
+    train_params = {
+        "input_window_width": 1,
+        "input_window_skip": 0,
+        "input_window_label_width": 1,
+        "batch_size": 10,
+        "epochs": 3,
+        "save_path": "saved_models",
+        "validation_split": 0.2, # 0-1
+        "type": "mishmash",
+        "loss": "ss",
+        "layers": [32, 32, 32],
+        "loss_params": {
+            "gamma": 1
+        }
+    }
+    from data_loader import load_dataset
+    dataset = load_dataset(ds)
+    train_model_on_dataset("ctn", dataset, train_params)
 
 
 if __name__ == "__main__":
