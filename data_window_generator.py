@@ -8,8 +8,10 @@ class WindowGenerator():
             batch_size=32,
             shuffle=False,
             sequence_stride=1, 
+            dtype=tf.float32,
             **kwargs):
 
+        self.dtype = dtype
         # Work out the window parameters.
         self.input_width = input_width
         self.label_width = label_width
@@ -36,38 +38,36 @@ class WindowGenerator():
 
         return inputs, labels
 
-    def make_dataset(self, dataset) -> tf.data.Dataset:
+    def make_dataset(self, dataset, parallel=True) -> tf.data.Dataset:
 
         if not isinstance(dataset, list):
             dataset = [dataset]
 
         total_ds = None
+
+        # parallel proccessing does not work here
+        # tf.MapDataset seems to not work 
+        # well with multiprocessing package
         for data in dataset:
-            ds = tf.data.Dataset.from_generator(self._tf_generator, 
-                args=[data],
-                output_signature=(
-                    tf.TensorSpec(shape=(None, self.input_width, None), dtype=tf.float32),
-                    tf.TensorSpec(shape=(None, self.label_width, None), dtype=tf.float32)
-                )
-            )
-            total_ds = total_ds.concatenate(ds) if total_ds else ds
+            for traj in data:
+                ds = self._transform_timeseries(tf.cast(traj, self.dtype))
+                total_ds = total_ds.concatenate(ds) if total_ds else ds
         return total_ds
+
+
+    def _transform_timeseries(self, traj):
+        return tf.keras.preprocessing.timeseries_dataset_from_array(
+            data=traj,
+            targets=None,
+            sequence_length=self.total_window_size,
+            sequence_stride=self.sequence_stride,
+            shuffle=self.shuffle,
+            batch_size=self.batch_size,
+        ).map(self._split_window)
+
 
     def __repr__(self):
         return ''.join([
             f'Total window size: {self.total_window_size}',
             f'Input indices: {self.input_indices}',
             f'Label indices: {self.label_indices}'])
-
-    def _tf_generator(self, data):
-        for traj in data:
-            ds = tf.keras.preprocessing.timeseries_dataset_from_array(
-                data=traj,
-                targets=None,
-                sequence_length=self.total_window_size,
-                sequence_stride=self.sequence_stride,
-                shuffle=self.shuffle,
-                batch_size=self.batch_size
-            ).map(self._split_window)
-            for x in ds:
-                yield x

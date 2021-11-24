@@ -86,12 +86,38 @@ def train_models_on_dataset(dataset, train_params:dict):
     return model
         
 
+def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.Model:
+    input_width = train_params["input_window_width"]
+    skip = train_params["input_window_skip"]
+    label_width = train_params["input_window_label_width"]
+
+    data = WindowGenerator(input_width, label_width, skip, **train_params) \
+            .make_dataset(dataset)
+
+    for example_inputs, _ in data.take(1):
+        input_shape = example_inputs.shape[1:]
+
+    model_arch = train_params["type"]
+    model = create_model(model_arch, input_shape,
+            model_name=model_name, **train_params)
+
+    profile = train_params.get("profile_batch", None)
+    if profile:
+        tensorboard_callback = \
+            tf.keras.callbacks.TensorBoard(log_dir="logs", 
+                histogram_freq=1, profile_batch=profile)
+        model.fit(data, epochs=train_params["epochs"], 
+            callbacks=[tensorboard_callback])
+
+    model.fit(data, epochs=train_params["epochs"], validation_split=train_params.get("validation_split", 0))
+    return model, history
+
 
 def main():
     cfg = load_and_check_config()
     for ds in cfg["datasets"]:
         dataset = load_dataset(ds)
-        train_models_on_dataset(dataset, cfg)
+        train_model_on_dataset("ctn", dataset, cfg)
 
 
 if __name__ == "__main__":

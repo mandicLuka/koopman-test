@@ -1,8 +1,7 @@
-input_window_width: 6
-input_window_skip: 0
-input_window_label_width: 4
 batch_size: 10
 epochs: 3
+save_path: saved_models
+validation_split: 0 # 0-1
 models:
   dense_small:
     type: ctn
@@ -16,8 +15,18 @@ models:
   mishmash_small:
     type: mishmash
     layers: [64, 64, 32]
-
 dataset_folder: "~/koopman_test/datasets"
 datasets: 
   - duffing
   - lorentz
+
+hyperparam_combinations:
+  - input_window_width: 1
+    input_window_skip: 0
+    input_window_label_width: 1
+  - input_window_width: 6
+    input_window_skip: 0
+    input_window_label_width: 1
+  - input_window_width: 6
+    input_window_skip: 0
+    input_window_label_width: 4

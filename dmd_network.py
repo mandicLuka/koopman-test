@@ -57,6 +57,8 @@ class CoordinateTransformNetwork(keras.Model):
 
         predictions = tf.Variable(tf.zeros_like(labels))
         data_var = tf.Variable(data)
+
+        num_labels = tf.shape(labels)[1]
         with tf.GradientTape() as tape:
 
             # embed = self.embed(x)  # Forward pass
@@ -67,14 +69,17 @@ class CoordinateTransformNetwork(keras.Model):
 
             # y_pred = (inverse, koopman)
             # y = (x_p, next_embed)
-            preds = []
-            for i in range(tf.shape(labels)[1]):
-                pred = self.call(data)
-                data_var[:, 0:-1].assign(data[:, 1:]) 
-                data_var[:, -1, :].assign(pred[:, -1], 1)
-                preds.append(pred[:, -1])
+            if num_labels == 1:
+                predictions = tf.expand_dims(self.call(data)[:, -1], axis=1)
+            else:
+                preds = []
+                for i in range(num_labels):
+                    pred = self.call(data)
+                    data_var[:, 0:-1].assign(data[:, 1:]) 
+                    data_var[:, -1, :].assign(pred[:, -1], 1)
+                    preds.append(pred[:, -1])
 
-            predictions = tf.stack(preds, axis=1)
+                predictions = tf.stack(preds, axis=1)
             # Compute the loss value
             # (the loss function is configured in `compile()`)
             loss = self.compiled_loss(labels, predictions, regularization_losses=self.losses)

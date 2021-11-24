@@ -1,5 +1,6 @@
 import tensorflow as tf
 from keras import backend
+
 class SequenceSquareLoss:
 
     def __init__(self, gamma=1, **kwargs):
