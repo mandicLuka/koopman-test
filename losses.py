@@ -8,12 +8,17 @@ class SequenceSquareLoss:
         self.lam = lam
 
     def __call__(self, y, y_pred):
+        y, data = y
+        y_pred, encoded = y_pred
+
         dim = tf.shape(y)[1]
-        result = tf.math.squared_difference(y, y_pred)
+        loss_koopman = tf.math.squared_difference(y, y_pred)
         if dim > 1:
             gamma = self._gamma_vec(dim)
-            result = tf.einsum("ijk, j->ik", result, gamma)
+            loss_koopman = tf.einsum("ijk, j->ik", loss_koopman, gamma)
 
+        loss_autoencoder = tf.math.squared_difference(data, encoded)
+        result = loss_koopman + self.lam * loss_autoencoder
         return backend.mean(result, axis=-1)
 
     def _gamma_vec(self, dim):

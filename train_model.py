@@ -70,7 +70,7 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
     skip = train_params["input_window_skip"]
     label_width = train_params["input_window_label_width"]
 
-    data = WindowGenerator(input_width, label_width, skip, **train_params) \
+    data = WindowGenerator(input_width, label_width, skip, shuffle=True, **train_params) \
             .make_dataset(dataset)
 
     for example_inputs, _ in data.take(1):
@@ -86,7 +86,7 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
             tf.keras.callbacks.TensorBoard(log_dir="logs", 
                 histogram_freq=1, profile_batch=profile)
         model.fit(data, epochs=train_params["epochs"], 
-            callbacks=[tensorboard_callback])
+            callbacks=[tensorboard_callback], verbose=2)
 
     validation_split = train_params.get("validation_split", 0)
     cardinality = data.cardinality().numpy()
