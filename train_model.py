@@ -96,6 +96,7 @@ def main():
         "loss": "mse",
         "autoencoder_loss": "mse",
         "layers": [32, 32, 32],
+        "koopman_size": 64,
         "loss_params": {
             "alpha": 0.00001,
             "beta": 100
