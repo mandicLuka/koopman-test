@@ -41,7 +41,7 @@ class MishmashLayer(Layer):
         # # elementwise do matrix product between v1 and inv_activ
         # final = tf.map_fn(lambda x: tf.matmul(x[0], x[1])[0], (b, inv_activ), fn_output_signature="float32")
 
-    @tf.function
+    # @tf.function
     def fwd(self, u1, u2):
         # b = self.activation(tf.matmul(u2, self.bias))
         # activ = self.activation(tf.tensordot(u2, self.coef, axes=1)) + self.matrix_bias
@@ -61,7 +61,7 @@ class MishmashLayer(Layer):
         ret = b + ret[:, 0]
         return ret
 
-    @tf.function
+    # @tf.function
     def bwd(self, v1, v2):
         # b = v2 - self.activation(tf.matmul(v1, self.bias))
         # inv_activ = tf.map_fn(lambda x: tf.linalg.pinv(x), \
@@ -79,13 +79,19 @@ class MishmashLayer(Layer):
         ret = tf.map_fn(lambda x: tf.matmul(x[0], x[1]), (tf.expand_dims(b, 1), inv), fn_output_signature="float32")
         return ret[:, 0]
 
-    def call(self, inputs):
+    def call(self, inputs, inverse=False):
+        if inverse:
+            return self._inverse(inputs)
+        else:
+            return self._forward(inputs)
+
+    def _forward(self, inputs):
         u1, u2 = inputs
         v1 = u2
         v2 = self.fwd(u1, u2)
         return [v1, v2]
 
-    def inverse(self, inputs):
+    def _inverse(self, inputs):
         v1, v2 = inputs
         u1 = self.bwd(v1, v2)
         u2 = v1

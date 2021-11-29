@@ -1,4 +1,4 @@
-batch_size: 10
+batch_size: 32
 epochs: 3
 save_path: saved_models
 validation_split: 0.2 # 0-1
@@ -7,8 +7,6 @@ models:
     type: ctn
     loss: ss
     layers: [32, 32, 32]
-    loss_params:
-      gamma: 1
   dense_med:
     type: ctn
     layers: [64, 64, 32]

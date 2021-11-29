@@ -1,28 +1,25 @@
 import tensorflow as tf
 from keras import backend
+from sequence_model import SequenceModelNetwork
 
-class SequenceSquareLoss:
+class DummyZeroLoss(tf.keras.losses.Loss):
 
-    def __init__(self, gamma=1, lam=100, **kwargs):
-        self.gamma = gamma
-        self.lam = lam
+    def __init__(self, **kwargs):
+        super().__init__(reduction=tf.keras.losses.Reduction.AUTO, name="dummy_zero")
 
-    def __call__(self, y, y_pred):
-        y, data = y
-        y_pred, encoded = y_pred
+    def call(self, y_true, y_pred):
+        return 0
 
-        dim = tf.shape(y)[1]
-        loss_koopman = tf.math.squared_difference(y, y_pred)
-        if dim > 1:
-            gamma = self._gamma_vec(dim)
-            loss_koopman = tf.einsum("ijk, j->ik", loss_koopman, gamma)
+class SequenceMse(tf.keras.losses.Loss):
 
-        loss_autoencoder = tf.math.squared_difference(data, encoded)
-        result = loss_koopman + self.lam * loss_autoencoder
-        return backend.mean(result, axis=-1)
+    def __init__(self, **kwargs):
+        super().__init__(reduction=tf.keras.losses.Reduction.AUTO, name="sequence_mse")
 
-    def _gamma_vec(self, dim):
-        gamma = tf.Variable(tf.ones(dim))
-        for i in range(dim - 1):
-            gamma[i+1].assign(gamma[i] * self.gamma)
-        return gamma
+    def call(self, y_true, y_pred):
+
+        labels = y_true[0]
+        predictions = y_pred[0]
+
+        sq_diff = tf.math.squared_difference(labels, predictions)
+
+        return tf.math.reduce_mean(sq_diff)

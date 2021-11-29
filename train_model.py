@@ -1,6 +1,6 @@
 from dmd_network import MishmashNetwork, CoordinateTransformNetwork
 from data_window_generator import WindowGenerator
-from losses import SequenceSquareLoss
+from losses import DummyZeroLoss
 import tensorflow as tf
 import numpy as np
 import itertools
@@ -12,58 +12,38 @@ _MODEL_REGISTRY = {
 }
 
 _LOSS_REGISTRY = {
-    "ss" : SequenceSquareLoss,
-    "loss2": CoordinateTransformNetwork
+    "mse" : tf.keras.losses.MeanSquaredError,
+    "dummy_zero": DummyZeroLoss
 }
 
 def create_model(
     model_architecture,
     input_shape,
+    output_shape,
     optimizer="adam",
-    loss="ss",
+    loss="mse",
+    autoencoder_loss=None,
     run_eagerly=True,
     model_name="new_model",
     loss_params=None,
     **kwargs
     ) -> tf.keras.Model:
 
-    model = _MODEL_REGISTRY[model_architecture](input_shape, 
+    model = _MODEL_REGISTRY[model_architecture](input_shape,
             model_name=model_name, **kwargs)
 
-    loss = _LOSS_REGISTRY[loss](**loss_params)
+    losses = [
+        _LOSS_REGISTRY[loss]()
+    ]
+    if autoencoder_loss:
+        losses.append(_LOSS_REGISTRY[autoencoder_loss]())
+    else:
+        losses.append(_LOSS_REGISTRY["dummy_zero"]())
 
-    model.compile(optimizer=optimizer, loss=loss, run_eagerly=run_eagerly)
+    alpha = loss_params and loss_params.get("alpha", None) or 1
+    beta = loss_params and loss_params.get("beta", None) or 1
+    model.compile(optimizer=optimizer, run_eagerly=run_eagerly, loss=losses, loss_weights=[alpha, beta])
     return model
-
-
-def train_models_on_dataset(dataset, train_params:dict):
-
-    input_width = train_params["input_window_width"]
-    skip = train_params["input_window_skip"]
-    label_width = train_params["input_window_label_width"]
-
-    data = WindowGenerator(input_width, label_width, skip, **train_params) \
-            .make_dataset(dataset)
-
-    for example_inputs, _ in data.take(1):
-        input_shape = example_inputs.shape[1:]
-
-    for model_name, params in train_params["models"].items():
-        model_arch = params["type"]
-        model = create_model(model_arch, input_shape,
-                model_name=model_name, **params)
-
-        profile = params.get("profile_batch", None)
-        if profile:
-            tensorboard_callback = \
-                tf.keras.callbacks.TensorBoard(log_dir="logs", 
-                    histogram_freq=1, profile_batch=profile)
-            model.fit(data, epochs=train_params["epochs"], 
-                callbacks=[tensorboard_callback])
-
-        model.fit(data, epochs=train_params["epochs"])
-    return model
-        
 
 def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.Model:
     input_width = train_params["input_window_width"]
@@ -73,37 +53,39 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
     data = WindowGenerator(input_width, label_width, skip, shuffle=True, **train_params) \
             .make_dataset(dataset)
 
-    for example_inputs, _ in data.take(1):
+    for example_inputs, example_outputs in data.take(1):
         input_shape = example_inputs.shape[1:]
+        output_shape = example_outputs.shape[1:]
 
     model_arch = train_params["type"]
-    model = create_model(model_arch, input_shape,
+    model = create_model(model_arch, input_shape, output_shape,
             model_name=model_name, **train_params)
+
+    validation_split = train_params.get("validation_split", 0)
+    cardinality = data.cardinality().numpy()
+    val_size = int(validation_split * cardinality)
+    train_size = int((1 - validation_split) * cardinality)
+
+    train_ds = data.take(train_size)    
+    val_ds = data.skip(train_size).take(val_size)
 
     profile = train_params.get("profile_batch", None)
     if profile:
         tensorboard_callback = \
             tf.keras.callbacks.TensorBoard(log_dir="logs", 
                 histogram_freq=1, profile_batch=profile)
-        model.fit(data, epochs=train_params["epochs"], 
-            callbacks=[tensorboard_callback], verbose=2)
 
-    validation_split = train_params.get("validation_split", 0)
-    cardinality = data.cardinality().numpy()
-    val_size = int(validation_split * cardinality)
-    train_size = int((1 - validation_split) * cardinality)
-    
-    train_ds = data.take(train_size)    
-    val_ds = data.skip(train_size).take(val_size)
+        history = model.fit(train_ds, epochs=train_params["epochs"], 
+                callbacks=[tensorboard_callback], validation_data=val_ds, verbose=2)
 
-    history = model.fit(train_ds, epochs=train_params["epochs"], validation_data=val_ds)
+    history = model.fit(train_ds, epochs=train_params["epochs"], validation_data=val_ds, verbose=1)
     return model, history
 
 
 def main():
     ds = "duffing"
     train_params = {
-        "input_window_width": 1,
+        "input_window_width": 2,
         "input_window_skip": 0,
         "input_window_label_width": 1,
         "batch_size": 10,
@@ -111,15 +93,17 @@ def main():
         "save_path": "saved_models",
         "validation_split": 0.2, # 0-1
         "type": "mishmash",
-        "loss": "ss",
+        "loss": "mse",
+        "autoencoder_loss": "mse",
         "layers": [32, 32, 32],
         "loss_params": {
-            "gamma": 1
+            "alpha": 0.00001,
+            "beta": 100
         }
     }
     from data_loader import load_dataset
     dataset = load_dataset(ds)
-    train_model_on_dataset("ctn", dataset, train_params)
+    train_model_on_dataset("new_model", dataset, train_params)
 
 
 if __name__ == "__main__":
