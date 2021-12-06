@@ -12,6 +12,7 @@ class CoordinateTransformNetwork(SequenceModelNetwork):
     def __init__(self, input_shape, layers=None, **kwargs):
         super().__init__(input_shape)
 
+        self.in_layers = layers
         layers = layers or [32, 32]
 
         self.fwd_layers = []
@@ -30,11 +31,10 @@ class CoordinateTransformNetwork(SequenceModelNetwork):
         self.U = keras.layers.Dense(layers[-1], activation='linear')
 
     def get_config(self):
-        return { "input_shape": (self.input_window, *self.feature_shape) }
-
-    @classmethod
-    def from_config(cls, config):
-        return cls(**config)
+        return { 
+            "input_shape": (self.input_window, *self.feature_shape),
+            "layers": self.in_layers 
+            }
 
     # @tf.function
     def embed(self, x):
@@ -49,6 +49,7 @@ class CoordinateTransformNetwork(SequenceModelNetwork):
         for l in self.bwd_layers:
             r = l(r)
         r = self.restored(r)
+        ret = tf.reshape(r, (-1, self.input_window, *self.feature_shape))
         return tf.reshape(r, (-1, self.input_window, *self.feature_shape))
         
     # @tf.function
@@ -64,22 +65,24 @@ class MishmashNetwork(SequenceModelNetwork):
     def __init__(self, input_shape, layers=None, **kwargs):
         super().__init__(input_shape)
 
+        self.in_layers = layers
         layers = layers or [32, 32]
 
         self.mm_layers = []
         for l in layers[:-1]:
             self.mm_layers.append(MishmashLayer(l))
 
+        second_to_last_shape = layers[-2] if len(layers) > 1 \
+            else self.num_features * self.input_window
+
         ## koopman definition
-        self.U = keras.layers.Dense(layers[-1], activation='linear')
+        self.U = keras.layers.Dense(layers[-1] + second_to_last_shape, activation='linear')
 
     def get_config(self):
-        return { "dim": self.out_dim }
-
-
-    @classmethod
-    def from_config(cls, config):
-        return cls(**config)
+        return { 
+            "input_shape": (self.input_window, *self.feature_shape),
+            "layers": self.in_layers 
+            }
 
     # @tf.function
     def embed(self, x):

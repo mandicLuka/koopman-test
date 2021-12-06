@@ -13,7 +13,7 @@ class SequenceModelNetwork(tf.keras.Model):
 
         # predictions will be passed as input because
         # the loss function can be complex 
-        self.inputs = layers.Input(input_shape)
+        # self.inputs = [layers.Input(input_shape)]
     
     @abstractmethod
     def embed(self, x):
@@ -26,6 +26,10 @@ class SequenceModelNetwork(tf.keras.Model):
     @abstractmethod
     def call(self, x):
         pass
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
 
     def train_step(self, data):
 

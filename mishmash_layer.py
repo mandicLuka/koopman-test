@@ -85,6 +85,8 @@ class MishmashLayer(Layer):
         else:
             return self._forward(inputs)
 
+
+
     def _forward(self, inputs):
         u1, u2 = inputs
         v1 = u2

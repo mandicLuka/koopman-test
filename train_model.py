@@ -42,7 +42,7 @@ def create_model(
 
     alpha = loss_params and loss_params.get("alpha", None) or 1
     beta = loss_params and loss_params.get("beta", None) or 1
-    model.build(input_shape)
+    # model.compute_output_shape(input_shape)
     model.compile(optimizer=optimizer, run_eagerly=run_eagerly, loss=losses, loss_weights=[alpha, beta])
     return model
 
@@ -52,11 +52,11 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
     label_width = train_params["input_window_label_width"]
 
     data = WindowGenerator(input_width, label_width, skip, shuffle=True, **train_params) \
-            .make_dataset(dataset)
+            .make_dataset(dataset)#.skip(7800)
 
     for example_inputs, example_outputs in data.take(1):
-        input_shape = example_inputs.shape[1:]
-        output_shape = example_outputs.shape[1:]
+        input_shape = example_inputs.shape[1:].as_list()
+        output_shape = example_outputs.shape[1:].as_list()
 
     model_arch = train_params["type"]
     model = create_model(model_arch, input_shape, output_shape,
@@ -80,7 +80,7 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
                 callbacks=[tensorboard_callback], validation_data=val_ds, verbose=2)
 
     history = model.fit(train_ds, epochs=train_params["epochs"], validation_data=val_ds, verbose=2)
-    return model, history
+    return history
 
 
 def main():
@@ -90,14 +90,14 @@ def main():
         "input_window_skip": 0,
         "input_window_label_width": 1,
         "batch_size": 10,
-        "epochs": 3,
+        "epochs": 1,
         "save_path": "saved_models",
         "validation_split": 0.2, # 0-1
         "type": "mishmash",
+        # "type": "ctn",
         "loss": "mse",
-        "autoencoder_loss": "mse",
+        # "autoencoder_loss": "mse",
         "layers": [32, 32, 32],
-        "koopman_size": 64,
         "loss_params": {
             "alpha": 0.00001,
             "beta": 100
@@ -105,7 +105,8 @@ def main():
     }
     from data_loader import load_dataset
     dataset = load_dataset(ds)
-    train_model_on_dataset("new_model", dataset, train_params)
+    history = train_model_on_dataset("new_model", dataset, train_params)
+    history.model.save("mmm")
 
 
 if __name__ == "__main__":
