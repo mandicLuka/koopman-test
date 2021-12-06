@@ -5,14 +5,23 @@ validation_split: 0.2 # 0-1
 models:
   dense_small:
     type: ctn
-    loss: ss
+    loss: mse
+    autoencoder_loss: mse
     layers: [32, 32, 32]
+  dense_small_large_koopman:
+    type: ctn
+    layers: [32, 32, 128]
+    loss: mse
+    autoencoder_loss: mse
   dense_med:
     type: ctn
-    layers: [64, 64, 32]
+    layers: [64, 64, 128]
+    loss: mse
+    autoencoder_loss: mse
   mishmash_small:
     type: mishmash
-    layers: [64, 64, 32]
+    loss: mse
+    layers: [32, 32, 32]
 dataset_folder: "~/koopman_test/datasets"
 datasets: 
   - duffing

@@ -42,6 +42,7 @@ def create_model(
 
     alpha = loss_params and loss_params.get("alpha", None) or 1
     beta = loss_params and loss_params.get("beta", None) or 1
+    model.build(input_shape)
     model.compile(optimizer=optimizer, run_eagerly=run_eagerly, loss=losses, loss_weights=[alpha, beta])
     return model
 
@@ -78,7 +79,7 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
         history = model.fit(train_ds, epochs=train_params["epochs"], 
                 callbacks=[tensorboard_callback], validation_data=val_ds, verbose=2)
 
-    history = model.fit(train_ds, epochs=train_params["epochs"], validation_data=val_ds, verbose=1)
+    history = model.fit(train_ds, epochs=train_params["epochs"], validation_data=val_ds, verbose=2)
     return model, history
 
 
