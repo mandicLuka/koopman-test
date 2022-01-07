@@ -42,7 +42,7 @@ def create_model(
 
     alpha = loss_params and loss_params.get("alpha", None) or 1
     beta = loss_params and loss_params.get("beta", None) or 1
-    # model.compute_output_shape(input_shape)
+    model.compute_output_shape(input_shape)
     model.compile(optimizer=optimizer, run_eagerly=run_eagerly, loss=losses, loss_weights=[alpha, beta])
     return model
 
@@ -52,7 +52,7 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
     label_width = train_params["input_window_label_width"]
 
     data = WindowGenerator(input_width, label_width, skip, shuffle=True, **train_params) \
-            .make_dataset(dataset)#.skip(7800)
+            .make_dataset(dataset)
 
     for example_inputs, example_outputs in data.take(1):
         input_shape = example_inputs.shape[1:].as_list()
