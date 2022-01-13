@@ -17,7 +17,7 @@ def get_dynamic_system(model, system_params):
     return sys
 
 
-def load_and_check_config() -> dict:
+def load_and_check_datasets_config() -> dict:
     with open(os.path.join("config", "datasets_config.yml"), "r") as stream:
         #try:
             cfg = yaml.safe_load(stream)
@@ -28,9 +28,9 @@ def load_and_check_config() -> dict:
 
 
 
-def create_datasets():
+def generate_trajectories():
 
-    cfg = load_and_check_config()
+    cfg = load_and_check_datasets_config()
     cfg_datasets = cfg.get("datasets")
     for name, cfg_dataset in cfg_datasets.items():
         sys = get_dynamic_system(cfg_dataset.get("system"), cfg_dataset.get("system_params", {}))
@@ -58,4 +58,4 @@ def create_initial_states(cfg_initial):
 
 
 if __name__ == "__main__":
-    create_datasets()
+    generate_trajectories()

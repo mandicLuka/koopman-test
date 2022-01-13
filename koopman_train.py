@@ -13,7 +13,7 @@ from airflow import DAG
 # Operators; we need this to operate!
 from airflow.operators.python import PythonOperator
 
-import os, yaml, copy
+import os, yaml, copy, json
 # These args will get passed on to each operator
 # You can override them on a per-task basis during operator initialization
 
@@ -75,6 +75,7 @@ def pick_best_model_and_retrain(dataset, models, **context):
     best_model = histories[index]
 
     train_params = best_model["train_params"]
+    print(json.dumps(train_params))
     train_params["validation_split"] = 0
     train_and_save_model("best", dataset, train_params, push_xcom=False, **context)
 
@@ -97,9 +98,8 @@ with DAG(
             for i, hyperparam_comb in enumerate(hyperparam_combs):
                 train_params.update(hyperparam_comb)
                 # add global cfg params to train params
-                p = {key:x for key, x in cfg.items() if key not in ["datasets", "models"]}
+                p = { key : x for key, x in cfg.items() if key not in ["datasets", "models"] }
                 train_params.update(p)
-                train_params
                 op = PythonOperator(
                     task_id=f"{model_name}-{ds}-{i}",
                     python_callable=train_and_save_model,
@@ -107,7 +107,7 @@ with DAG(
                     op_kwargs={
                         'model_name': f"{model_name}-{i}",
                         'dataset_name': ds,
-                        'train_params': train_params,
+                        'train_params': copy.deepcopy(train_params),
                         'push_xcom': True
                     },
                 )

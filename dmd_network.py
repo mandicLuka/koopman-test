@@ -10,8 +10,8 @@ class CoordinateTransformNetwork(SequenceModelNetwork):
 
 
     def __init__(self, input_shape, layers=None, **kwargs):
-        super().__init__(input_shape)
-
+        super().__init__(input_shape, **kwargs)
+        
         self.in_layers = layers
         layers = layers or [32, 32]
 
@@ -25,7 +25,7 @@ class CoordinateTransformNetwork(SequenceModelNetwork):
         for l in reversed(layers[:-1]):
             self.bwd_layers.append(keras.layers.Dense(l, activation='relu'))
 
-        self.restored = keras.layers.Dense(self.num_features * self.input_window)
+        self.restored = keras.layers.Dense(self.num_features)
 
         ## koopman definition
         self.U = keras.layers.Dense(layers[-1], activation='linear')
@@ -36,28 +36,33 @@ class CoordinateTransformNetwork(SequenceModelNetwork):
             "layers": self.in_layers 
             }
 
-    # @tf.function
+    @tf.function
     def embed(self, x):
         e = tf.reshape(x, (-1, self.input_window * self.num_features))
         for l in self.fwd_layers:
             e = l(e)
         return self.embedding(e)
 
-    # @tf.function
+    @tf.function
+    def propagate(self, embedded):
+        return self.U(embedded)
+
+    @tf.function
     def inverse(self, embed):
         r = embed
         for l in self.bwd_layers:
             r = l(r)
         r = self.restored(r)
-        ret = tf.reshape(r, (-1, self.input_window, *self.feature_shape))
-        return tf.reshape(r, (-1, self.input_window, *self.feature_shape))
+        return r
+        # ret = tf.reshape(r, (-1, self.input_window, *self.feature_shape))
+        # return tf.reshape(r, (-1, self.input_window, *self.feature_shape))
         
-    # @tf.function
+    @tf.function
     def call(self, x):
         e = self.embed(x)
         koopman = self.U(e)
         inverse = self.inverse(koopman)
-        return tf.expand_dims(inverse[:, -1, :], axis=1)
+        return inverse
 
 class MishmashNetwork(SequenceModelNetwork):
 

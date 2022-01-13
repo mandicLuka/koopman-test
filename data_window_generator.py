@@ -38,7 +38,7 @@ class WindowGenerator():
 
         return inputs, labels
 
-    def make_dataset(self, dataset, parallel=True) -> tf.data.Dataset:
+    def make_dataset(self, dataset, transform_data=None) -> tf.data.Dataset:
 
         if not isinstance(dataset, list):
             dataset = [dataset]

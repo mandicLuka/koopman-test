@@ -1,4 +1,6 @@
 import os, yaml, pickle
+import numpy as np
+from create_model import create_model
 
 def load_and_check_config(name:str) -> dict:
     parent = os.path.dirname(os.path.abspath(__file__))
@@ -15,4 +17,14 @@ def load_dataset(dataset_name):
     with open(os.path.join(parent, "datasets", f"{dataset_name}.pkl"), "rb") as stream:
         dataset = pickle.load(stream)
 
-    return list(map(lambda x: x.data, dataset))
+    return list((map(lambda x: x.data, dataset)))
+
+def load_model(model_arch, input_shape, model_name, params):
+
+    model = create_model(model_arch, input_shape, 
+            model_name=model_name, **params)
+    model.load_weights(os.path.join(
+            "checkpoint_save", model_name
+        ))
+
+    return model
