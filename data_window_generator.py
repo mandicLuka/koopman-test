@@ -8,7 +8,7 @@ class WindowGenerator():
             batch_size=32,
             shuffle=False,
             sequence_stride=1, 
-            dtype=tf.float32,
+            dtype=tf.float64,
             **kwargs):
 
         self.dtype = dtype
@@ -38,7 +38,24 @@ class WindowGenerator():
 
         return inputs, labels
 
-    def make_dataset(self, dataset, transform_data=None) -> tf.data.Dataset:
+    def _split_window_forced(self, window, force_shape):
+        num_forces = force_shape[0]
+
+        inputs = window[:, self.input_slice, :]
+        labels = window[:, self.labels_slice, :]
+
+        forces = inputs[:, :, :num_forces]
+        input_states = inputs[:, :, num_forces:]
+
+        forces_l = labels[:, :, :num_forces]
+        labels = labels[:, :, num_forces:]
+
+        inputs.set_shape([None, self.input_width, None])
+        labels.set_shape([None, self.label_width, None])
+
+        return (input_states, forces), (labels, forces_l)
+
+    def make_dataset(self, dataset) -> tf.data.Dataset:
 
         if not isinstance(dataset, list):
             dataset = [dataset]
@@ -50,20 +67,40 @@ class WindowGenerator():
         # well with multiprocessing package
         for data in dataset:
             for traj in data:
-                ds = self._transform_timeseries(tf.cast(traj, self.dtype))
+                ds = self._transform_timeseries(tf.cast(traj, self.dtype), self._split_window)
                 total_ds = total_ds.concatenate(ds) if total_ds else ds
         return total_ds
 
+    def make_forced_dataset(self, dataset, force_shape) -> tf.data.Dataset:
 
-    def _transform_timeseries(self, traj):
+        if not isinstance(dataset, list):
+            dataset = [dataset]
+
+        total_ds = None
+
+        # parallel proccessing does not work here
+        # tf.MapDataset seems to not work 
+        # well with multiprocessing package
+        for data in dataset:
+            for traj in data:
+                ds = self._transform_timeseries(tf.cast(traj, self.dtype), 
+                    lambda x: self._split_window_forced(x, force_shape))
+                total_ds = total_ds.concatenate(ds) if total_ds else ds
+        if self.shuffle:
+            card = tf.data.experimental.cardinality(total_ds).numpy()
+        return total_ds
+
+
+
+    def _transform_timeseries(self, traj, func):
         return tf.keras.preprocessing.timeseries_dataset_from_array(
             data=traj,
             targets=None,
             sequence_length=self.total_window_size,
             sequence_stride=self.sequence_stride,
-            shuffle=self.shuffle,
+            # shuffle=self.shuffle,
             batch_size=self.batch_size,
-        ).map(self._split_window)
+        ).map(func)
 
 
     def __repr__(self):

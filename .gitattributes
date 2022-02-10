@@ -21,3 +21,15 @@ unity_test/test_osc_z.json filter=lfs diff=lfs merge=lfs -text
 unity_test/test1.json filter=lfs diff=lfs merge=lfs -text
 unity_test/test2.json filter=lfs diff=lfs merge=lfs -text
 unity_test/test_osc_x.json filter=lfs diff=lfs merge=lfs -text
+datasets/matlab_auv.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/otter_1dof.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/otter_1dof_test.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/otter_2dof_test.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/unity_ident_test.pkl filter=lfs diff=lfs merge=lfs -text
+add filter=lfs diff=lfs merge=lfs -text
+datasets/duffing.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/otter_2dof.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/otter_2dof_veliki.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/unity_ident.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/lorentz.pkl filter=lfs diff=lfs merge=lfs -text
+datasets/matlab_otter.pkl filter=lfs diff=lfs merge=lfs -text

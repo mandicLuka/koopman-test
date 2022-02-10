@@ -12,9 +12,10 @@ class TrajectoryDescriptor:
 
 @dataclass
 class Trajectory:
-    description: TrajectoryDescriptor
+    description: TrajectoryDescriptor = None
     data: Any = field(default_factory=list)
     time: List[float] = field(default_factory=list)
+    model_name: str = ""
 
 class TrajectoryGenerator:
 

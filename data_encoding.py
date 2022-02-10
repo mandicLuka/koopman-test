@@ -14,7 +14,7 @@ def encode_angle_deg(ang):
     if isinstance(ang, list) or \
             isinstance(ang, np.array) :
         to_rad = np.pi / 180. * np.array(ang)
-        return np.concatenate((np.sin(to_rad), np.cos(to_rad)))
+        return np.vstack((np.sin(to_rad), np.cos(to_rad))).reshape((-1, ))
     else:
         to_rad = np.pi / 180. * ang
         return np.array([np.sin(to_rad), np.cos(to_rad)])

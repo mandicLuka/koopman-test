@@ -16,7 +16,7 @@ class MishmashLayer(Layer):
         self.u2_shape = u2_shape
         self.bias = self.add_weight("upper_b", shape=[u2_shape[-1], self.num_outputs], initializer=tf.keras.initializers.RandomNormal(stddev=0.005))
         # self.coef = self.add_weight("upper_c", shape=[u2_shape[-1], u1_shape[-1], self.num_outputs], initializer=tf.keras.initializers.RandomNormal(stddev=0.0005))
-        self.matrix_bias = tf.constant(np.ones(shape=[u1_shape[-1], self.num_outputs]), dtype="float32")
+        self.matrix_bias = tf.constant(np.eye(u1_shape[-1], self.num_outputs), dtype="float32")
         self.coef1 = self.add_weight("upper_c1", shape=[u2_shape[-1], self.num_outputs*u1_shape[-1]], initializer=tf.keras.initializers.RandomNormal(stddev=0.0005))
 
         # u2 = tf.constant([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], dtype="float32")
@@ -41,7 +41,7 @@ class MishmashLayer(Layer):
         # # elementwise do matrix product between v1 and inv_activ
         # final = tf.map_fn(lambda x: tf.matmul(x[0], x[1])[0], (b, inv_activ), fn_output_signature="float32")
 
-    # @tf.function
+    @tf.function
     def fwd(self, u1, u2):
         # b = self.activation(tf.matmul(u2, self.bias))
         # activ = self.activation(tf.tensordot(u2, self.coef, axes=1)) + self.matrix_bias
@@ -61,7 +61,7 @@ class MishmashLayer(Layer):
         ret = b + ret[:, 0]
         return ret
 
-    # @tf.function
+    @tf.function
     def bwd(self, v1, v2):
         # b = v2 - self.activation(tf.matmul(v1, self.bias))
         # inv_activ = tf.map_fn(lambda x: tf.linalg.pinv(x), \
