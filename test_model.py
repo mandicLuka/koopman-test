@@ -146,7 +146,7 @@ def save_test_runs(folder_name, model_name, traj_times, traj_outputs, dataset):
 
 def main():
     ds = "otter_2dof_test"
-    model = "otter2_10"
+    model = "otter2_13"
     save_runs = True
     test_params = {
         "input_window_width": 1,

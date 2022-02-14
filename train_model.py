@@ -69,41 +69,41 @@ def set_hyperparams(train_params, hyperparams):
     
 def main():
     ds = "otter_2dof_veliki"
-    model_name = "otter2_1"
+    model_name = "otter_m2_15"
 
     num_runs = 10
     hyperparams = {
         "alpha": [10, 1, 0.1],
         "beta": [1, 1e-1, 1e-2],
         "gamma": [1e-1, 1e-2, 1e-3],
-        "lambda1": [1e-2, 1e-3, 1e-4],
-        "lambda2": [1e-3, 1e-4, 1e-5]
+        "lambda1": [1e-4, 1e-5, 1e-6],
+        "lambda2": [1e-5, 1e-6, 1e-7]
     }
 
-    num_runs = 5
-    hyperparams = {
-        "alpha": [1],
-        "beta": [5e-1],
-        "gamma": [1e-2],
-        "lambda1": [1e-2, 1e-3, 1e-4],
-        "lambda2": [1e-3, 1e-4, 1e-5]
-    }
+    # num_runs = 5
+    # hyperparams = {
+    #     "alpha": [1],
+    #     "beta": [5e-1],
+    #     "gamma": [1e-2],
+    #     "lambda1": [1e-2, 1e-3, 1e-4],
+    #     "lambda2": [1e-3, 1e-4, 1e-5]
+    # }
 
     train_params = {
         "input_window_width": 1,
         "input_window_skip": 0,
-        "input_window_label_width": 1,
+        "input_window_label_width": 15,
         "force_shape": (2, ),
         "batch_size": 32,
         "epochs": 10,
         "save_path": "saved_models",
         "validation_split": 0.2, # 0-1
         "run_eagerly": False,
-        "type": "fctn",
-        # "type": "fmishmash",
+        # "type": "fctn",
+        "type": "fmishmash",
         # "profile_batch": 100,
         "loss": "seq_mse",
-        "autoencoder_loss": "mse",
+        # "autoencoder_loss": "mse",
         # "loss_mask": [0, 0, 1, 1, 1, 0].
         # "loss_mask": [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         # "loss_mask": [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -118,6 +118,11 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     dataset = load_dataset(ds)
 
+    if train_params.get("autoencoder_loss", None):
+        score_name = "val_output_1_mean_absolute_error"
+    else:
+        score_name = "val_mean_absolute_error"
+
     best = None
     best_val_loss = float('inf')
     best_i = -1
@@ -128,9 +133,9 @@ def main():
         set_hyperparams(train_params, hyperparams)
 
         history = train_model_on_dataset(model_name, dataset, train_params)
-        if min(history.history["val_output_1_mean_absolute_error"]) < best_val_loss:
+        if min(history.history[score_name]) < best_val_loss:
             best = history
-            best_val_loss = min(history.history["val_output_1_mean_absolute_error"])
+            best_val_loss = min(history.history[score_name])
             best_i = i
             best_params = train_params["loss_params"]
 
