@@ -55,7 +55,7 @@ def evolve_forced(model, forces, x0, time, dt):
     return times, x
 
 def plot_result(true_trajectories, model, input_width, dt=0.1, 
-        time=10, force_shape=None, plot_dims=None, **kwargs):
+        time=10, force_shape=None, plot_dims=None, start_time=0, **kwargs):
 
     if force_shape is not None:
         num_forces = force_shape[0]
@@ -70,6 +70,7 @@ def plot_result(true_trajectories, model, input_width, dt=0.1,
         times, output = model.evolve_true(true_trajectories, time, dt)
         state_trajectories = true_trajectories
 
+    times = times + start_time
     fig = plt.figure()
     ax = plt.axes(projection="3d")
     ax.set_xlabel("X Axis")
@@ -103,7 +104,7 @@ def plot_result(true_trajectories, model, input_width, dt=0.1,
             ax.plot(times, state_trajectories[i][:len(times), d], lw=1.5, linestyle='dashed')
             ax.plot(times, output[i][:, d], lw=1)
 
-    plt.show()
+    # plt.show()
 
     return times, output
 
@@ -132,17 +133,28 @@ def test_model_on_dataset(model_name, datasets, test_params:dict) -> tf.keras.Mo
     return traj_times, traj_outputs
 
 
+# TEMP HARDCODED
+def export_data(data, extract_dimensions):
+    d = data[:, extract_dimensions]
+    d[0:3] *= 0.01
+    d[3:] *= 0.1
+    return d
+
     
-def save_test_runs(folder_name, model_name, traj_times, traj_outputs, dataset):
+def save_test_runs(folder_name, model_name, traj_times, traj_outputs, dataset, extract_dimensions):
 
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
 
-    for i, times, outputs, traj in zip(range(len(times)), traj_times, traj_outputs, dataset):
-        model_path = os.path.join(folder_name, f"{model_name}_run_{i}")
-        true_path = os.path.join(folder_name, f"true_run_{i}")
-        pickle.dump(Trajectory(time=times, data=outputs, model_name=model_name), model_path)
-        pickle.dump(Trajectory(time=times, data=traj, model_name=model_name), true_path)
+    for i, times, outputs, traj in zip(range(len(traj_times)), traj_times, traj_outputs, dataset):
+        
+        for j, o, d in zip(range(outputs.shape[0]), outputs, traj):
+            model_path = os.path.join(folder_name, f"{model_name}_run_{i}_{j}")
+            true_path = os.path.join(folder_name, f"true_run_{i}_{j}")
+            with open(f"{model_path}.pkl", "wb") as stream:
+                pickle.dump(Trajectory(time=times, data=export_data(o, extract_dimensions), model_name=model_name), stream)
+            with open(f"{true_path}.pkl", "wb") as stream:
+                pickle.dump(Trajectory(time=times, data=export_data(d, extract_dimensions), model_name=model_name), stream)
 
 def main():
     ds = "otter_2dof_test"
@@ -152,6 +164,7 @@ def main():
         "input_window_width": 1,
         "type": "fctn",
         # "type": "fmishmash",
+        # "input_state_dependent": True,
         "loss": "seq_mse",
         "autoencoder_loss": "mse",
         "force_shape": (2, ),
@@ -162,10 +175,12 @@ def main():
         "dt": 0.2,
         "time": 300,
         "layers": [32, 32, 32],
-        "state_layers": [64, 128, 128, 64],
+        "state_layers": [64, 128, 32],
         "force_layers": [32, 32],
-        # "plot_dims": [0, 1, 2]
-        "plot_dims": [3, 4, 5]
+        "plot_dims": [0, 1, 2],
+        "extract_dimensions" : [0, 3, 4],
+        "start_time": 9.95
+        # "plot_dims": [3, 4, 5]
         # "plot_dims": [6, 7, 8]
     }
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -176,7 +191,7 @@ def main():
     traj_times, traj_outputs = test_model_on_dataset(model, dataset, test_params)
 
     if save_runs:
-        save_test_runs("test_runs", model, traj_times, traj_outputs, dataset)
+        save_test_runs("test_runs", model, traj_times, traj_outputs, dataset, test_params["extract_dimensions"])
 
 
 if __name__ == "__main__":

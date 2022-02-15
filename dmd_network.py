@@ -62,16 +62,22 @@ class ForcedCoordinateTransformNetwork(ForcedSequenceModelNetwork):
             "force_layers": self.state_in_layers 
             }
 
-    @tf.function
+    # @tf.function
     def embed_state(self, x):
         e = tf.reshape(x, (-1, self.input_window * self.num_state_features))
         for l in self.state_fwd_layers:
             e = l(e)
         return self.state_embedding(e)
 
-    @tf.function
+    # @tf.function
     def embed_force(self, x):
-        e = tf.reshape(x, (-1, self.num_force_features))
+        if self.input_state_dependent:
+            f, s = x
+            s = tf.reshape(s, (-1, self.num_state_features))
+            f = tf.reshape(f, (-1, self.num_force_features))
+            e = tf.concat((s, f), axis=-1)
+        else:
+            e = tf.reshape(x, (-1, self.num_force_features))
         for l in self.force_fwd_layers:
             e = l(e)
         return self.force_embedding(e)
@@ -280,7 +286,14 @@ class ForcedMishmashNetwork(ForcedSequenceModelNetwork):
 
     @tf.function
     def embed_force(self, x):
-        inp = tf.reshape(x, (-1, self.num_force_features))
+
+        if self.input_state_dependent:
+            f, s = x
+            s = tf.reshape(s, (-1, self.num_state_features))
+            f = tf.reshape(f, (-1, self.num_force_features))
+            inp = tf.concat((s, f), axis=-1)
+        else:
+            inp = tf.reshape(x, (-1, self.num_force_features))
         e = [inp, inp]
         for l in self.force_mm_layers:
             e = l(e)
@@ -307,4 +320,7 @@ class ForcedMishmashNetwork(ForcedSequenceModelNetwork):
         for l in reversed(self.force_mm_layers):
             r = l(r, inverse=True)
         mean = (r[0] + r[1]) / 2
-        return tf.reshape(mean, (-1, self.num_force_features))
+        if self.input_state_dependent:
+            return tf.reshape(mean, (-1, self.num_force_features + self.num_state_features))[:, :self.num_force_features]
+        else:
+            return tf.reshape(mean, (-1, self.num_force_features))

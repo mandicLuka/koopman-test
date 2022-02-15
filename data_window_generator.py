@@ -88,6 +88,7 @@ class WindowGenerator():
                 total_ds = total_ds.concatenate(ds) if total_ds else ds
         if self.shuffle:
             card = tf.data.experimental.cardinality(total_ds).numpy()
+            total_ds = total_ds.shuffle(card)
         return total_ds
 
 

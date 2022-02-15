@@ -25,6 +25,7 @@ def create_model(
     run_eagerly=True,
     model_name="new_model",
     loss_params=None,
+    input_state_dependent=False,
     **kwargs
     ) -> tf.keras.Model:
 
@@ -36,6 +37,7 @@ def create_model(
             loss_mask=loss_mask, 
             reg_l2=lambda2,
             koopman_l1=lambda1,
+            input_state_dependent=input_state_dependent,
             **kwargs)
 
     losses = [

@@ -7,8 +7,8 @@ from scipy.io import loadmat
 
 
 MATLAB_DATA_PATH = "matlab"
-MAT_FILE = "otter_2dof_test.mat"
-DATASET_NAME = "otter_2dof_test"
+MAT_FILE = "otter_2dof_veliki.mat"
+DATASET_NAME = "otter_2dof_veliki"
 
 ## OTTER
 STATE_DEF = {
@@ -39,9 +39,9 @@ STATE_DEF = {
 #         (0, lambda x: 100*x),
 #         (1,  lambda x: 100*x),
 #         (2, lambda x: 100*x),
-#         (3, lambda x: 100*x),
-#         (4,  lambda x: 100*x),
-#         (5, lambda x: 100*x),
+#         (3, lambda x: 10*x),
+#         (4,  lambda x: 10*x),
+#         (5, lambda x: 10*x),
 #     ]
 # }
 

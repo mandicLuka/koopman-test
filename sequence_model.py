@@ -184,7 +184,7 @@ class SequenceModelNetwork(tf.keras.Model):
 class ForcedSequenceModelNetwork(tf.keras.Model):
 
     def __init__(self, input_shape, predict_horizon=1, autoencoder_loss=None, 
-        loss_mask=None, reg_l2=0, koopman_l1=0, **kwargs):
+        loss_mask=None, reg_l2=0, koopman_l1=0, input_state_dependent=False, **kwargs):
         super().__init__()
 
         state_shape, force_shape = input_shape
@@ -198,6 +198,7 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
         self.loss_mask = loss_mask
         self.reg_l2 = reg_l2
         self.koopman_l1 = koopman_l1
+        self.input_state_dependent = input_state_dependent
 
         # predictions will be passed as input because
         # the loss function can be complex 
@@ -231,11 +232,14 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
     def inverse_force(self, embed):
         pass
         
-    @tf.function
+    # @tf.function
     def call(self, data):
         x, f = data
         e_state = self.embed_state(x)
-        e_force = self.embed_force(f)
+        if self.input_state_dependent:
+            e_force = self.embed_force((f, x))
+        else:
+            e_force = self.embed_force(f)
         koopman = self.propagate((e_state, e_force))
         inverse = self.inverse_state(koopman)
         return inverse
@@ -286,7 +290,10 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
         for i in range(num_prev_inputs, len(times)):
             curr_x = true_trajs[:, i-num_prev_inputs:i, num_forces:]
             state_embed = self.embed_state(curr_x)
-            force_embed = self.embed_force(forces[:, i])
+            if self.input_state_dependent:
+                force_embed = self.embed_force((forces[:, i], curr_x))
+            else:
+                force_embed = self.embed_force(forces[:, i])
             new_state = self.propagate((state_embed, force_embed))
             x[:, i] = self.inverse_state(new_state)
         return times, x
@@ -299,7 +306,11 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
         x[:, :num_prev_inputs] = x0
         state_embed = self.embed_state(x0)
         for i in range(num_prev_inputs, len(times)):
-            force_embed = self.embed_force(forces[:, i])
+
+            if self.input_state_dependent:
+                force_embed = self.embed_force((forces[:, i], x[:, i]))
+            else:
+                force_embed = self.embed_force(forces[:, i])
             state_embed = self.propagate((state_embed, force_embed))
             x[:, i] = self.inverse_state(state_embed)
         return times, x
@@ -313,7 +324,11 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
         with tf.GradientTape() as tape:
 
             state = self.embed_state(inputs)
-            force = self.embed_force(forces)
+            if self.input_state_dependent:
+                force = self.embed_force((forces, inputs))
+            else:
+                force = self.embed_force(forces)
+
             restored_state = self.inverse_state(state)
             restored_force = self.inverse_force(force)
             preds = []
@@ -327,7 +342,11 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
                 preds.append(inv)
                 lifted_states.append(next_state)
                 state = next_state
-                force = self.embed_force(forces_l[:, i])
+
+                if self.input_state_dependent:
+                    force = self.embed_force((forces_l[:, i], labels[:, i]))
+                else:
+                    force = self.embed_force(forces_l[:, i])
 
             preds = tf.stack(preds, axis=1)
             labels_embed = tf.stack(labels_embed, axis=1)
@@ -365,7 +384,10 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
         (labels, forces_l) = labels
 
         state = self.embed_state(inputs)
-        force = self.embed_force(forces)
+        if self.input_state_dependent:
+            force = self.embed_force((forces, inputs))
+        else:
+            force = self.embed_force(forces)
         restored_state = self.inverse_state(state)
         restored_force = self.inverse_force(force)
         preds = []
@@ -379,7 +401,10 @@ class ForcedSequenceModelNetwork(tf.keras.Model):
             labels_embed.append(label_embed)
             lifted_states.append(next_state)
             state = next_state
-            force = self.embed_force(forces_l[:, i])
+            if self.input_state_dependent:
+                force = self.embed_force((forces_l[:, i], labels[:, i]))
+            else:
+                force = self.embed_force(forces_l[:, i])
 
         preds = tf.stack(preds, axis=1)
         labels_embed = tf.stack(labels_embed, axis=1)
