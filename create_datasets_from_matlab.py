@@ -7,43 +7,48 @@ from scipy.io import loadmat
 
 
 MATLAB_DATA_PATH = "matlab"
-MAT_FILE = "otter_2dof_veliki.mat"
-DATASET_NAME = "otter_2dof_veliki"
+MAT_FILE = "auv_veliki.mat"
+DATASET_NAME = "auv_veliki_stari"
 
 ## OTTER
-STATE_DEF = {
-    "PWM": None,
-    # "Ang": [
-    #     (0, lambda x: 10*x),
-    #     (1,  lambda x: 10*x),
-    #     (2, lambda x: 10*x)
-    # ],
-    "AngVel": [
-        (0, lambda x: 100*x),
-        (1,  lambda x: 100*x),
-        (2, lambda x: 100*x)
-    ],
-    "Vel": [
-        (0, lambda x: 10*x),
-        (1,  lambda x: 10*x),
-        (2, lambda x: 10*x)
-    ]
-    # "Acc": [0, 1, 2],
-}
-
-## REMUS
 # STATE_DEF = {
-#     "Inputs": None,
-#     # "Ang": [0, 1, 2],
-#     "State": [
+#     "PWM": None,
+#     # "Ang": [
+#     #     (0, lambda x: 10*x),
+#     #     (1,  lambda x: 10*x),
+#     #     (2, lambda x: 10*x)
+#     # ],
+#     "AngVel": [
 #         (0, lambda x: 100*x),
 #         (1,  lambda x: 100*x),
-#         (2, lambda x: 100*x),
-#         (3, lambda x: 10*x),
-#         (4,  lambda x: 10*x),
-#         (5, lambda x: 10*x),
+#         (2, lambda x: 100*x)
+#     ],
+#     "Vel": [
+#         (0, lambda x: 10*x),
+#         (1,  lambda x: 10*x),
+#         (2, lambda x: 10*x)
 #     ]
+#     # "Acc": [0, 1, 2],
 # }
+
+## REMUS
+STATE_DEF = {
+    "Inputs": None,
+    "State": [
+        (0, lambda x: 1*x),
+        (1,  lambda x: 100*x),
+        (2, lambda x: 100*x),
+        (3, lambda x: 100*x),
+        (4,  lambda x: 100*x),
+        (5, lambda x: 100*x),
+        # 6, 7 are x, y
+        (8, lambda x: 0.1*x), 
+        # angles
+        (9, lambda x: [np.sin(x), np.cos(x)]), 
+        (10, lambda x: [np.sin(x), np.cos(x)]), 
+        (11, lambda x: [np.sin(x), np.cos(x)]), 
+    ],
+}
 
 
 def get_index(idx, default):
@@ -84,7 +89,15 @@ def parse_trajectories(trajs, config:dict, sample_time=None):
     for k, idx in config.items():
         logs = trajs[0][k]
         idx = get_index(idx, len(logs))
-        state_dim += len(idx)
+        for value in idx:
+            if isinstance(value, tuple):
+                # find dimension of the value by
+                # calling the tf with the dummy 0 value
+                tf = value[1]
+                t = tf(0)
+                state_dim += len(t) if isinstance(t, list) else 1
+            else:
+                state_dim += 1
 
 
     N = int(end_time / sample_time) + 1 if sample_time else max_len
@@ -117,10 +130,14 @@ def parse_trajectories(trajs, config:dict, sample_time=None):
                     if transform:
                         value = transform(value)
 
-                    state[state_count] = value
-                    state_count += 1
+                    if isinstance(value, list):
+                        state[state_count:state_count+len(value)] = value
+                        state_count += len(value)
+                    else:
+                        state[state_count] = value
+                        state_count += 1
 
-                parsed[traj_i, t] = state
+            parsed[traj_i, t] = state
     
     return parsed, timestamps
 

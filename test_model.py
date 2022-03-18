@@ -62,8 +62,8 @@ def plot_result(true_trajectories, model, input_width, dt=0.1,
         state_trajectories = np.array(list(map(lambda x: x[:, num_forces:], true_trajectories)))
         x0 = np.array(list(map(lambda x: x[:input_width, num_forces:], true_trajectories)))
         forces = np.array(list(map(lambda x: x[:, :num_forces], true_trajectories)))
-        times, output = model.evolve_true(true_trajectories, time, dt)
-        # times, output = model.evolve(forces, x0, time, dt)
+        # times, output = model.evolve_true(true_trajectories, time, dt)
+        times, output = model.evolve(forces, x0, time, dt)
     else:
         x0 = np.array(list(map(lambda x: x[:input_width], true_trajectories)))
         # times, output = model.evolve(x0, time, dt)
@@ -104,7 +104,7 @@ def plot_result(true_trajectories, model, input_width, dt=0.1,
             ax.plot(times, state_trajectories[i][:len(times), d], lw=1.5, linestyle='dashed')
             ax.plot(times, output[i][:, d], lw=1)
 
-    # plt.show()
+    plt.show()
 
     return times, output
 
@@ -135,9 +135,9 @@ def test_model_on_dataset(model_name, datasets, test_params:dict) -> tf.keras.Mo
 
 # TEMP HARDCODED
 def export_data(data, extract_dimensions):
+    data[:, 0:3] *= 0.01
+    data[:, 3:] *= 0.1
     d = data[:, extract_dimensions]
-    d[0:3] *= 0.01
-    d[3:] *= 0.1
     return d
 
     
@@ -154,11 +154,13 @@ def save_test_runs(folder_name, model_name, traj_times, traj_outputs, dataset, e
             with open(f"{model_path}.pkl", "wb") as stream:
                 pickle.dump(Trajectory(time=times, data=export_data(o, extract_dimensions), model_name=model_name), stream)
             with open(f"{true_path}.pkl", "wb") as stream:
-                pickle.dump(Trajectory(time=times, data=export_data(d, extract_dimensions), model_name=model_name), stream)
+                pickle.dump(Trajectory(time=times, data=export_data(d[:len(times)], extract_dimensions), model_name='true'), stream)
 
 def main():
-    ds = "otter_2dof_test"
-    model = "otter2_13"
+    # ds = "auv_veliki_full"
+    # model = "auv_10"
+    ds = "otter_2dof"
+    model = "otter_2dof_16"
     save_runs = True
     test_params = {
         "input_window_width": 1,
@@ -173,25 +175,26 @@ def main():
         # "trained_mask": [0,0 0, 0, 0, 1, 1],
         # "trained_mask": [0, 1],
         "dt": 0.2,
-        "time": 300,
+        "time": 200,
         "layers": [32, 32, 32],
         "state_layers": [64, 128, 32],
         "force_layers": [32, 32],
-        "plot_dims": [0, 1, 2],
-        "extract_dimensions" : [0, 3, 4],
-        "start_time": 9.95
-        # "plot_dims": [3, 4, 5]
-        # "plot_dims": [6, 7, 8]
+        "extract_dimensions" : [0, 1, 2, 3, 4, 5],
+        "start_time": 9.95,
+        # "plot_dims": [0, 1, 2, 3, 4, 5]
+        # "plot_dims": [0, 1, 2]
+        "plot_dims": [3, 4, 5]
     }
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     from data_loader import load_dataset
     # dataset = load_dataset(ds)
     # dataset = [load_dataset(ds)[1:2][0]]
-    dataset = [load_dataset(ds)[0][:3]]
+    dataset = [load_dataset(ds)[0][5:8]]
     traj_times, traj_outputs = test_model_on_dataset(model, dataset, test_params)
 
     if save_runs:
-        save_test_runs("test_runs", model, traj_times, traj_outputs, dataset, test_params["extract_dimensions"])
+        force_shape = test_params["force_shape"]
+        save_test_runs("test_runs", model, traj_times, traj_outputs, [x[:, :, force_shape[0]:] for x in dataset], test_params["extract_dimensions"])
 
 
 if __name__ == "__main__":

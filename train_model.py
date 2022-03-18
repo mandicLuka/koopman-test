@@ -40,7 +40,7 @@ def train_model_on_dataset(model_name, dataset, train_params:dict) -> tf.keras.M
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join("checkpoint_save", f"{model_name}{file_name_sufix}"),
         save_weights_only=True,
-        monitor='val_output_1_mean_absolute_error',
+        monitor=train_params.get("score_name", 'loss'),
         mode='min',
         save_best_only=True)
 
@@ -68,31 +68,31 @@ def set_hyperparams(train_params, hyperparams):
         loss_params[k] = random.sample(v, 1)[0]
     
 def main():
-    ds = "auv"
-    model_name = "auv"
+    ds = "auv_veliki_full"
+    model_name = "auv_1"
 
-    num_runs = 10
-    hyperparams = {
-        "alpha": [1, .5, .1],
-        "beta": [1, .5, .1, .05],
-        "gamma": [1, .5, .1, .05],
-        "lambda1": [1e-4, 1e-5, 1e-6],
-        "lambda2": [1e-5, 1e-6, 1e-7]
-    }
-
-    # num_runs = 5
+    # num_runs = 10
     # hyperparams = {
-    #     "alpha": [1],
-    #     "beta": [5e-1],
-    #     "gamma": [1e-2],
-    #     "lambda1": [1e-2, 1e-3, 1e-4],
-    #     "lambda2": [1e-3, 1e-4, 1e-5]
+    #     "alpha": [1, .5, .1],
+    #     "beta": [1, .5, .1, .05],
+    #     "gamma": [1, .5, .1, .05],
+    #     "lambda1": [1e-4, 1e-5, 1e-6],
+    #     "lambda2": [1e-5, 1e-6, 1e-7]
     # }
+
+    num_runs = 5
+    hyperparams = {
+        "alpha": [1],
+        "beta": [5e-1],
+        "gamma": [1e-2],
+        "lambda1": [1e-2, 1e-3, 1e-4],
+        "lambda2": [1e-3, 1e-4, 1e-5]
+    }
 
     train_params = {
         "input_window_width": 1,
         "input_window_skip": 0,
-        "input_window_label_width": 15,
+        "input_window_label_width": 1,
         "force_shape": (3, ),
         "batch_size": 32,
         "epochs": 10,
@@ -123,6 +123,8 @@ def main():
     else:
         score_name = "val_mean_absolute_error"
 
+    train_params["score_name"] = score_name
+
     best = None
     best_val_loss = float('inf')
     best_i = -1
@@ -138,8 +140,7 @@ def main():
             best_val_loss = min(history.history[score_name])
             best_i = i
             best_params = train_params["loss_params"]
-
-    print(f"Best: {best_i}")
+        print(f"Best by now: {best_i}")
     print(best_params)
     history.model.save_weights(os.path.join(train_params["save_path"], model_name))
 
